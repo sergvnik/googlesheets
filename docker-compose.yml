@@ -1,0 +1,61 @@
+version: '3.9'
+
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:14
+    environment:
+      POSTGRES_USER: gtest
+      POSTGRES_PASSWORD: ghbdtn1
+      POSTGRES_DB: gtest
+      POSTGRES_HOST_AUTH_METHOD: trust
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    volumes:
+      - ./database:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    restart: unless-stopped
+
+  backend:
+    container_name: backend
+    image: backend:custom
+    build: ./backend
+    restart: unless-stopped
+    ports:
+      - 8000:8000
+    volumes:
+      - .:/usr/src/app/static
+      - .:/usr/src/app/media
+    command: gunicorn server.wsgi:application --bind 0.0.0.0:8000 -w 2
+    depends_on:
+      - postgres
+
+  frontend:
+    container_name: frontend
+    image: frontend:custom
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    volumes:
+      - .:/usr/src/app/src
+      - .:/usr/src/app/public
+    command: serve -s /usr/src/app/build -l 3000
+    depends_on:
+      - backend
+  nginx:
+    container_name: nginx
+    image: nginx:custom
+    build: ./nginx
+    restart: unless-stopped
+    ports:
+      - 80:80
+    volumes:
+      - .:/usr/src/app/static
+      - .:/usr/src/app/media
+    depends_on:
+      - frontend
+
+volumes:
+  postgres:
+    external: true
